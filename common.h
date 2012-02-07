@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #define MaxAttrs 16
 #define MAX_TREE_HEIGHT 16
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 100
  
 typedef char byte;
 

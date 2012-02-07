@@ -11,7 +11,7 @@ int keylen(KeyType *keytype){
 class Index{
 public:
 	TreeNode *root;
-	char rootAddress[8];
+	char rootAddress[16];
 	KeyType keytype;
 	int payloadlen;
 
@@ -65,7 +65,6 @@ public:
 		int height = 0, i;
 		while(current != 0)
 		{
-			height++;
 			accessPath[height++]=current;
 			for (i = 0 ; i<current->numkeys ; i++ )
 			{
@@ -96,7 +95,7 @@ public:
 	}
 	int handleNonLeaf(TreeNode **rcvd_node, int position) {
 		TreeNode *node=*rcvd_node;
-		node = (TreeNode *)strtoul(&(node->children[position*8]),NULL,10);
+		*rcvd_node = (TreeNode *)strtoul(&(node->children[position*16]),NULL,10);
 		return 0;
 	}
 
@@ -114,8 +113,8 @@ public:
 			int n_by_two = (node->numkeys)/2;
 			for(int i = n_by_two; i< node->numkeys ; i++)
 			{
-				strncpy(&(node->keys[(i)*keylen(&keytype)]), &(newLeaf->keys[(i-n_by_two)*keylen(&keytype)]),keylen(&keytype));
-				strncpy(&(node->payload[(i)*payloadlen]), &(newLeaf->payload[(i-n_by_two)*payloadlen]),payloadlen);
+				strncpy(&(newLeaf->keys[(i-n_by_two)*keylen(&keytype)]),&(node->keys[(i)*keylen(&keytype)]),keylen(&keytype));
+				strncpy(&(newLeaf->payload[(i-n_by_two)*payloadlen]),&(node->payload[(i)*payloadlen]),payloadlen);
 			}
 			newLeaf->flag = 'c';
 			newLeaf->numkeys = n_by_two;
@@ -124,11 +123,14 @@ public:
 			for(int i = 0 ; i < height ; i++)
 				if(accessPath[i]==node)
 					parent = accessPath[i-1];
-			insertIntoParent(node,key,newLeaf,parent,height,accessPath);
+			char* nextKey =(char *) malloc(keylen(&keytype));
+
+			strncpy(nextKey,newLeaf->keys,keylen(&keytype));
+			insertIntoParent(node,nextKey,newLeaf,parent,height,accessPath);
 		}
 		*rcvd_node=0;
 		return 0;
-}
+	}
 	int insertIntoParent(TreeNode *left,byte key[],TreeNode *right,TreeNode *parent,int height,TreeNode *accessPath[]){
 		if(root == left)
 		{
@@ -136,7 +138,7 @@ public:
 			newRoot->numkeys = 1;
 			strncpy(&(newRoot->keys[0]),key,keylen(&keytype));
 			sprintf(&(newRoot->children[0]),"%u",(unsigned int)left);
-			sprintf(&(newRoot->children[8]),"%u",(unsigned int)right);
+			sprintf(&(newRoot->children[16]),"%u",(unsigned int)right);
 			root = newRoot;
 			return 0;
 		}
@@ -153,37 +155,39 @@ public:
 		}
 		for(int j = parent->numkeys-1; j >= i; j--) {
 			strncpy(&(parent->keys[(j+1)*keylen(&keytype)]), &(parent->keys[j*keylen(&keytype)]),keylen(&keytype));
-			strncpy(&(parent->children[(j+1)*8]), &(parent->children[j*8]),8);
+			strncpy(&(parent->children[(j+1)*16]), &(parent->children[j*16]),16);
 		}
 		strncpy(&(parent->keys[i*keylen(&keytype)]),key, keylen(&keytype));
-		strncpy(&(parent->children[i*8]),key,8);
+		strncpy(&(parent->children[i*16]),key,16);
 		parent->numkeys = parent->numkeys +1;
 		if(splitNecessary(parent->numkeys,'n'))
 		{
 			TreeNode *newNonLeaf = new TreeNode();
 			int n_by_two = (parent->numkeys)/2;
-			for(int i = n_by_two; i< parent->numkeys ; i++)
+			for(int i = n_by_two+1; i< parent->numkeys ; i++)
 			{
-				strncpy(&(parent->keys[(i)*keylen(&keytype)]), &(newNonLeaf->keys[(i-n_by_two)*keylen(&keytype)]),keylen(&keytype));
-				strncpy(&(parent->children[(i)*8]), &(newNonLeaf->payload[(i-n_by_two)*8]),payloadlen);
+				strncpy( &(newNonLeaf->keys[(i-n_by_two)*keylen(&keytype)]),&(parent->keys[(i)*keylen(&keytype)]),keylen(&keytype));
+				strncpy(&(newNonLeaf->payload[(i-n_by_two)*16]),&(parent->children[(i)*16]), payloadlen);
 			}
 			newNonLeaf->flag = 'n';
-			newNonLeaf->numkeys = n_by_two;
+			newNonLeaf->numkeys = n_by_two-1;
 			parent->numkeys = n_by_two;
 			TreeNode* grandParent = 0;
 			for(int i = 0 ; i < height ; i++)
 				if(accessPath[i]==parent)
 					grandParent = accessPath[i-1];
-			insertIntoParent(parent,key,newNonLeaf,grandParent,height,accessPath);
+			char* nextKey =(char *) malloc(keylen(&keytype));
+			strncpy(nextKey,&(parent->keys[n_by_two]),keylen(&keytype));
+			insertIntoParent(parent,nextKey,newNonLeaf,grandParent,height,accessPath);
 		}
 		return 0;
 	}
 	int splitNecessary(int numkeys,char type){
 		int allowedKeys;
 		if(type == 'c')
-			allowedKeys = (BLOCK_SIZE)/(numkeys*(keylen(&keytype)+payloadlen)+8);
+			allowedKeys = (BLOCK_SIZE)/((keylen(&keytype)+payloadlen)+16);
 		else
-			allowedKeys = (BLOCK_SIZE)/(numkeys*(keylen(&keytype)+8)+8);
+			allowedKeys = (BLOCK_SIZE)/((keylen(&keytype)+16)+16);
 		if(numkeys > allowedKeys)
 			return 1;
 		return 0;
@@ -196,10 +200,27 @@ public:
 int main(){
 	KeyType keyType;
 	keyType.numAttrs=1;
-	keyType.attrTypes[0]=intType;
-	keyType.attrLen[0]=sizeof(intType);
+	keyType.attrTypes[0]=stringType;
+	keyType.attrLen[0]=sizeof(int);
 
 	class Index *index = new Index("test.txt",&keyType,8);
+//	char * one;
+//	char * two;
+//	char * three;
+//	char * four;
+//	char * five;
+//	char * six;
+//	char * seven;
+//	char * eight;
+//	sprintf(one,"%d",1);
+//	sprintf(two,"%d",2);
+//	sprintf(three,"%d",3);
+//	sprintf(four,"%d",4);
+//	sprintf(five,"%d",5);
+//	sprintf(six,"%d",6);
+//	sprintf(seven,"%d",7);
+//	sprintf(eight,"%d",8);
+
 	index->insert("2","2");
 	index->insert("3","3");
 	index->insert("1","1");
