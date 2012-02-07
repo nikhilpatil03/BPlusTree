@@ -19,11 +19,11 @@ struct KeyType {
 class TreeNode {
 public:
 	int numkeys;
-	byte keys[];
+	byte keys[1000];
 	byte myaddr[8];
 	union {
-		byte children[];
-		byte payload[];
+		byte children[64];
+		byte payload[64];
 	};
 	char flag;
 

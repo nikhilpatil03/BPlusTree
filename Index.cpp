@@ -8,15 +8,14 @@ int keylen(KeyType *keytype){
 	return len;
 }
 
-int compare(char *key, char *nodeKey) {
-	return 0;
-}
 
 
 class Index{
+public:
 	TreeNode *root;
 	KeyType keytype;
 	int payloadlen;
+
 	Index(char* indexName, KeyType *keytype, int payloadlen){
 		this->keytype.numAttrs = keytype->numAttrs;
 		for (int i=0; i < keytype->numAttrs;i++) {
@@ -25,6 +24,32 @@ class Index{
 		}
 		this->payloadlen = payloadlen;
 	}
+
+	//returns -1 if first value is smaller
+	int compare(char *received_key, char *received_nodeKey) {
+		char *key = received_key, *nodeKey = received_nodeKey;
+		for (int i=0; i < keytype.numAttrs; i++){
+			switch(keytype.attrTypes[i]) {
+			case intType:
+				if ( (int)(*key) > (int)(*nodeKey) )
+					return 1;
+				else if ( (int)(*key) < (int)(*nodeKey) )
+					return -1;
+				break;
+
+			case stringType:
+				int result = strncmp (key, nodeKey, keytype.attrLen[i]);
+				if (result != 0 )
+						return result;
+				break;
+			}
+			key = key + keytype.attrLen[i];
+			nodeKey = nodeKey + keytype.attrLen[i];
+		}
+		return 0;
+	}
+
+
 	Index(char* indexName){
 
 	}
@@ -47,17 +72,17 @@ class Index{
 			for (i = 0 ; i<current->numkeys ; i++ )
 			{
 				nodekey = &(current->keys[keylen(ktype)*i]);
-				int isLesser = compare(key,nodekey);
-				if ( isLesser != 1)
+				int isLesser = compare(nodekey,key);
+				if ( isLesser != -1)
 				{
 					break;
 				}
-				if(i == current->numkeys-1)
-					i++;
+//				if(i == current->numkeys-1)
+//					i++;
 			}
 
 			if (current->flag == 'c')
-				handleLeaf(key, payload, current, i, accessPath);
+				handleLeaf(key, payload, &current, i, accessPath);
 			else
 				handleNonLeaf(current, i);
 		}
@@ -68,10 +93,8 @@ class Index{
 		root = new TreeNode();
 		root->numkeys = 1;
 		strncpy(root->keys, key, keylen(&keytype));
-
 		root->flag = 'c';
 		strncpy(root->payload, payload, payloadlen);
-//        root->keys[keylen*1] = 0;
         return 0;
 	}
 	int handleNonLeaf(TreeNode *node, int position) {
@@ -79,7 +102,14 @@ class Index{
 		return 0;
 	}
 
-	int handleLeaf(char key[], char payload[], TreeNode *node, int position, TreeNode *accessPath[]) {
+	int handleLeaf(char key[], char payload[], TreeNode **rcvd_node, int position, TreeNode *accessPath[]) {
+		TreeNode *node=*rcvd_node;
+		for(int j = node->numkeys-1; j >= position; j--) {
+			strncpy(&(node->keys[(j+1)*keylen(&keytype)]), &(node->keys[j*keylen(&keytype)]),keylen(&keytype));
+		}
+		strncpy(&(node->keys[position*keylen(&keytype)]),key, keylen(&keytype));
+		node->numkeys = node->numkeys + 1;
+		*rcvd_node=0;
 		return 0;
 	}
 
@@ -94,5 +124,9 @@ int main(){
 	keyType.attrTypes[0]=intType;
 	keyType.attrLen[0]=sizeof(intType);
 
-	Index *index = new Index("test.txt",&keyType,8);
+	class Index *index = new Index("test.txt",&keyType,8);
+	index->insert("2","2");
+	index->insert("3","3");
+	index->insert("1","1");
+
 }
