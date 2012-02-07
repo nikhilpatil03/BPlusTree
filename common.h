@@ -2,10 +2,10 @@
 #include <string.h>
 #define MaxAttrs 16
 #define MAX_TREE_HEIGHT 16
-
+ 
 typedef char byte;
 
-enum attrType {
+enum attrType  {
 	intType,
 	stringType
 };
