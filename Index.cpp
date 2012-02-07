@@ -1,4 +1,5 @@
 #include "common.h"
+#include "FileHandler.h"
 
 int keylen(KeyType *keytype){
 	int len=0;
@@ -16,6 +17,7 @@ public:
 	int payloadlen;
 
 	Index(char* indexName, KeyType *keytype, int payloadlen){
+		FileHandler *fHandler = new FileHandler(indexName);
 		this->keytype.numAttrs = keytype->numAttrs;
 		for (int i=0; i < keytype->numAttrs;i++) {
 			this->keytype.attrTypes[i] = keytype->attrTypes[i];
