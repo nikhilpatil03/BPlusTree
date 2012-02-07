@@ -111,7 +111,7 @@ public:
 		node->numkeys = node->numkeys + 1;
 		*rcvd_node=0;
 		return 0;
-	}
+}
 
 	int lookup(char key[], char payload[]){
 		return 0;
