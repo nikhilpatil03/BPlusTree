@@ -8,11 +8,10 @@ int keylen(KeyType *keytype){
 	return len;
 }
 
-
-
 class Index{
 public:
 	TreeNode *root;
+	char rootAddress[8];
 	KeyType keytype;
 	int payloadlen;
 
@@ -51,7 +50,7 @@ public:
 
 
 	Index(char* indexName){
-
+		root = (TreeNode *)strtoul(rootAddress,NULL,10);
 	}
 	int insert(char key[], char payload[]){
 
@@ -62,57 +61,133 @@ public:
 		}
 		TreeNode * current = root;
 		char *nodekey;
-		KeyType *ktype = & keytype;
 		TreeNode *accessPath[MAX_TREE_HEIGHT];
 		int height = 0, i;
 		while(current != 0)
 		{
-
+			height++;
 			accessPath[height++]=current;
 			for (i = 0 ; i<current->numkeys ; i++ )
 			{
-				nodekey = &(current->keys[keylen(ktype)*i]);
+				nodekey = &(current->keys[keylen(&keytype)*i]);
 				int isLesser = compare(nodekey,key);
 				if ( isLesser != -1)
 				{
 					break;
 				}
-//				if(i == current->numkeys-1)
-//					i++;
 			}
 
 			if (current->flag == 'c')
-				handleLeaf(key, payload, &current, i, accessPath);
+				handleLeaf(key, payload, &current, i, accessPath,height);
 			else
-				handleNonLeaf(current, i);
+				handleNonLeaf(&current, i);
 		}
 		return 0;
 	}
 	int addFirstElement(byte *key,byte *payload)
 	{
 		root = new TreeNode();
+		sprintf(rootAddress,"%u",(unsigned int)root);
 		root->numkeys = 1;
 		strncpy(root->keys, key, keylen(&keytype));
 		root->flag = 'c';
 		strncpy(root->payload, payload, payloadlen);
         return 0;
 	}
-	int handleNonLeaf(TreeNode *node, int position) {
+	int handleNonLeaf(TreeNode **rcvd_node, int position) {
+		TreeNode *node=*rcvd_node;
 		node = (TreeNode *)strtoul(&(node->children[position*8]),NULL,10);
 		return 0;
 	}
 
-	int handleLeaf(char key[], char payload[], TreeNode **rcvd_node, int position, TreeNode *accessPath[]) {
+	int handleLeaf(byte key[], byte payload[], TreeNode **rcvd_node, int position, TreeNode *accessPath[],int height) {
 		TreeNode *node=*rcvd_node;
 		for(int j = node->numkeys-1; j >= position; j--) {
 			strncpy(&(node->keys[(j+1)*keylen(&keytype)]), &(node->keys[j*keylen(&keytype)]),keylen(&keytype));
 		}
 		strncpy(&(node->keys[position*keylen(&keytype)]),key, keylen(&keytype));
 		node->numkeys = node->numkeys + 1;
+
+		if(splitNecessary(node->numkeys,node->flag))
+		{
+			TreeNode *newLeaf = new TreeNode();
+			int n_by_two = (node->numkeys)/2;
+			for(int i = n_by_two; i< node->numkeys ; i++)
+			{
+				strncpy(&(node->keys[(i)*keylen(&keytype)]), &(newLeaf->keys[(i-n_by_two)*keylen(&keytype)]),keylen(&keytype));
+				strncpy(&(node->payload[(i)*payloadlen]), &(newLeaf->payload[(i-n_by_two)*payloadlen]),payloadlen);
+			}
+			newLeaf->flag = 'c';
+			newLeaf->numkeys = n_by_two;
+			node->numkeys = n_by_two;
+			TreeNode* parent = 0;
+			for(int i = 0 ; i < height ; i++)
+				if(accessPath[i]==node)
+					parent = accessPath[i-1];
+			insertIntoParent(node,key,newLeaf,parent,height,accessPath);
+		}
 		*rcvd_node=0;
 		return 0;
 }
-
+	int insertIntoParent(TreeNode *left,byte key[],TreeNode *right,TreeNode *parent,int height,TreeNode *accessPath[]){
+		if(root == left)
+		{
+			TreeNode *newRoot = new TreeNode();
+			newRoot->numkeys = 1;
+			strncpy(&(newRoot->keys[0]),key,keylen(&keytype));
+			sprintf(&(newRoot->children[0]),"%u",(unsigned int)left);
+			sprintf(&(newRoot->children[8]),"%u",(unsigned int)right);
+			root = newRoot;
+			return 0;
+		}
+		int i;
+		char *nodekey;
+		for (i = 0 ; i < parent->numkeys ; i++ )
+		{
+			nodekey = &(parent->keys[keylen(&keytype)*i]);
+			int isLesser = compare(nodekey,key);
+			if ( isLesser != -1)
+			{
+				break;
+			}
+		}
+		for(int j = parent->numkeys-1; j >= i; j--) {
+			strncpy(&(parent->keys[(j+1)*keylen(&keytype)]), &(parent->keys[j*keylen(&keytype)]),keylen(&keytype));
+			strncpy(&(parent->children[(j+1)*8]), &(parent->children[j*8]),8);
+		}
+		strncpy(&(parent->keys[i*keylen(&keytype)]),key, keylen(&keytype));
+		strncpy(&(parent->children[i*8]),key,8);
+		parent->numkeys = parent->numkeys +1;
+		if(splitNecessary(parent->numkeys,'n'))
+		{
+			TreeNode *newNonLeaf = new TreeNode();
+			int n_by_two = (parent->numkeys)/2;
+			for(int i = n_by_two; i< parent->numkeys ; i++)
+			{
+				strncpy(&(parent->keys[(i)*keylen(&keytype)]), &(newNonLeaf->keys[(i-n_by_two)*keylen(&keytype)]),keylen(&keytype));
+				strncpy(&(parent->children[(i)*8]), &(newNonLeaf->payload[(i-n_by_two)*8]),payloadlen);
+			}
+			newNonLeaf->flag = 'n';
+			newNonLeaf->numkeys = n_by_two;
+			parent->numkeys = n_by_two;
+			TreeNode* grandParent = 0;
+			for(int i = 0 ; i < height ; i++)
+				if(accessPath[i]==parent)
+					grandParent = accessPath[i-1];
+			insertIntoParent(parent,key,newNonLeaf,grandParent,height,accessPath);
+		}
+		return 0;
+	}
+	int splitNecessary(int numkeys,char type){
+		int allowedKeys;
+		if(type == 'c')
+			allowedKeys = (BLOCK_SIZE)/(numkeys*(keylen(&keytype)+payloadlen)+8);
+		else
+			allowedKeys = (BLOCK_SIZE)/(numkeys*(keylen(&keytype)+8)+8);
+		if(numkeys > allowedKeys)
+			return 1;
+		return 0;
+	}
 	int lookup(char key[], char payload[]){
 		return 0;
 	}
@@ -128,5 +203,9 @@ int main(){
 	index->insert("2","2");
 	index->insert("3","3");
 	index->insert("1","1");
+	index->insert("5","5");
+	index->insert("33","33");
+	index->insert("23","23");
+	index->insert("7","7");
 
 }
