@@ -7,17 +7,18 @@
 #include<common.h>
 
 class TreeNode {
+public:
 	int numkeys;
 	byte keys[];
 	byte myaddr[8];
 	union {
-		byte *children[8];
-		byte payload[8][];
+		byte children[];
+		byte payload[];
 	};
 	char flag;
 
-	TreeNode()
-	{
-		sprintf(myaddr,"%u",this);
-	}
-}
+//	TreeNode()
+//	{
+//		sprintf(myaddr,"%u",this);
+//	}
+};

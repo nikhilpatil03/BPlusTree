@@ -1,4 +1,16 @@
-#include<common.h>
+#include "common.h"
+
+int keylen(KeyType *keytype){
+	int len=0;
+	for (int i=0;i<keytype->numAttrs; i++) {
+		len += keytype->attrLen[i];
+	}
+	return len;
+}
+
+int compare(char *key, char *nodeKey) {
+	return 0;
+}
 
 
 class Index{
@@ -6,7 +18,11 @@ class Index{
 	KeyType keytype;
 	int payloadlen;
 	Index(char* indexName, KeyType *keytype, int payloadlen){
-		this->keytype = new(*keytype);
+		this->keytype.numAttrs = keytype->numAttrs;
+		for (int i=0; i < keytype->numAttrs;i++) {
+			this->keytype.attrTypes[i] = keytype->attrTypes[i];
+			this->keytype.attrLen[i] = keytype->attrLen[i];
+		}
 		this->payloadlen = payloadlen;
 	}
 	Index(char* indexName){
@@ -22,7 +38,7 @@ class Index{
 		TreeNode * current = root;
 		char *nodekey;
 		KeyType *ktype = & keytype;
-		TreeNode accessPath[MAX_TREE_HEIGHT];
+		TreeNode *accessPath[MAX_TREE_HEIGHT];
 		int height = 0, i;
 		while(current != 0)
 		{
@@ -30,7 +46,7 @@ class Index{
 			accessPath[height++]=current;
 			for (i = 0 ; i<current->numkeys ; i++ )
 			{
-				nodekey = current->keys[keylen(ktype)*i];
+				nodekey = &(current->keys[keylen(ktype)*i]);
 				int isLesser = compare(key,nodekey);
 				if ( isLesser != 1)
 				{
@@ -51,18 +67,19 @@ class Index{
 	{
 		root = new TreeNode();
 		root->numkeys = 1;
-		root->keys[0] = key;
+		strncpy(root->keys, key, keylen(&keytype));
+
 		root->flag = 'c';
-		root->payload[0] = payload;
-        root->keys[keylen*1] = 0;
+		strncpy(root->payload, payload, payloadlen);
+//        root->keys[keylen*1] = 0;
         return 0;
 	}
 	int handleNonLeaf(TreeNode *node, int position) {
-		node = (TreeNode *)strtoul(node->children[position*8],NULL,10);
+		node = (TreeNode *)strtoul(&(node->children[position*8]),NULL,10);
 		return 0;
 	}
 
-	int handleLeaf(char key[], char payload[], TreeNode *node, int position, TreeNode *accessPath) {
+	int handleLeaf(char key[], char payload[], TreeNode *node, int position, TreeNode *accessPath[]) {
 		return 0;
 	}
 
@@ -71,10 +88,11 @@ class Index{
 	}
 };
 
-int keylen(KeyType *keytype){
-	return sizeof(keytype->attrLen)+sizeof(keytype->attrTypes)+sizeof(keytype->numAttrs);
-}
+int main(){
+	KeyType keyType;
+	keyType.numAttrs=1;
+	keyType.attrTypes[0]=intType;
+	keyType.attrLen[0]=sizeof(intType);
 
-int compare(char *key, char *nodeKey) {
-	return 0;
+	Index *index = new Index("test.txt",&keyType,8);
 }
