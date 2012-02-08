@@ -6,7 +6,9 @@ using namespace std;
 
 class FileHandler {
 private:
-	 fstream fio;
+	char fileName[50];
+	fstream fio;
+
 public:
 	FileHandler(char *fileName);
 	~FileHandler() ;

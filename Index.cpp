@@ -33,8 +33,8 @@ public:
 		}
 		this->payloadlen = payloadlen;
 		header = (char *)malloc(BLOCK_SIZE);
-		strncpy(&header[node_address_size],utils->getBytesForInt(payloadlen),sizeof(int));
-		strncpy(&header[node_address_size+sizeof(payloadlen)],utils->getBytesForKeyType(this->keytype),sizeof(keytype));
+		strncpy(&header[NODE_OFFSET_SIZE],utils->getBytesForInt(payloadlen),sizeof(int));
+		strncpy(&header[NODE_OFFSET_SIZE+sizeof(payloadlen)],utils->getBytesForKeyType(this->keytype),sizeof(keytype));
 	}
 
 	//returns -1 if first value is smaller
@@ -89,7 +89,7 @@ public:
 			position += sizeof(node->numkeys);
 			strncpy(&block[position],(node->data),sizeof(node->data));
 			fHandler->writeBlock(offset,block);
-			free(block);
+//			free(block);
 			return 0;
 		}
 
@@ -144,14 +144,15 @@ public:
 	int addFirstElement(byte *key,byte *payload)
 	{
 		root = new TreeNode();
-		root->numkeys = 1;
+
 		root->flag = 'c';
 		root->addData(keytype,key,payloadlen,payload,0);
+		root->numkeys = 1;
 //		strncpy(root->keys, key, keylen(&keytype));
 //		strncpy(root->payload, payload, payloadlen);
-		strncpy(header,utils->getBytesForInt(2),node_address_size);
-		storeNode(root,2);
+		strncpy(header,utils->getBytesForInt(2),NODE_OFFSET_SIZE);
 		fHandler->writeBlock(0,header);
+		storeNode(root,1);
         return 0;
 	}
 	int handleNonLeaf(TreeNode **rcvd_node, int position) {
@@ -323,8 +324,8 @@ int main(){
 	keyType.numAttrs=1;
 	keyType.attrTypes[0]=stringType;
 	keyType.attrLen[0]=sizeof(int);
-
-	class Index *index = new Index("test.txt",&keyType,8);
+	char *filename = "/home/sandeep/work/cs631/index.ind";
+	class Index *index = new Index(filename,&keyType,8);
 
 	index->insert("2","2");
 	index->insert("3","3");
