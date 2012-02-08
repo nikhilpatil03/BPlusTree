@@ -24,7 +24,7 @@ public:
 	int addData(KeyType keytype,char key[], int payloadlen,char payload[]);
 	int getKey(KeyType keytype,char key[], int position);
 	int readData(int position,KeyType keytype,char key[], int payloadlen,char payload[]);
-
+	int getPayload(int payloadlen,char *payload,int position);
 
 };
 #endif /* TREENODE_H_ */

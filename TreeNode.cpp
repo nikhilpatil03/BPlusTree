@@ -25,6 +25,12 @@ int TreeNode::getKey(KeyType keytype,char *key,int position){
 	return 0;
 }
 
+int TreeNode::getPayload(int payloadlen,char *payload,int position){
+	int payloadstart = BLOCK_SIZE;
+	strncpy(payload,&(data[payloadstart-((position+1)*payloadlen)]),payloadlen);
+	return 0;
+}
+
 TreeNode::~TreeNode() {
 	// TODO Auto-generated destructor stub
 }
