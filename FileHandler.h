@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 
-
+typedef char byte;
 using namespace std;
 
 class FileHandler {

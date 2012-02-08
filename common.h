@@ -24,7 +24,7 @@ public:
 	byte keys[1000];
 	byte myaddr[8];
 	union {
-		byte children[64];
+		unsigned char children[64];
 		byte payload[64];
 	};
 	char flag;

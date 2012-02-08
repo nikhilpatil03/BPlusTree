@@ -6,7 +6,7 @@
  */
 
 #include "FileHandler.h"
-#include <common.h>
+#include "common.h"
 
 FileHandler::FileHandler(char *fileName) {
  fio.open(fileName, ios:: in | ios::out | ios::binary);		//pass mode as iso:: in | ios::out | ios::binary
