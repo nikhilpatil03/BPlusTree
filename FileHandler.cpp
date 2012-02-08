@@ -27,7 +27,7 @@ if (offset % BLOCK_SIZE != 0) {
 			printf("Error: Reading beyond the file.");
 			return 0;
 		}
-		fio.seekg(offset,ios::beg);
+		fio.seekg(offset*BLOCK_SIZE,ios::beg);
 		fio.read((char *)data, BLOCK_SIZE);
 		return 1;
 	}
@@ -45,7 +45,7 @@ int FileHandler::writeBlock(int offset, byte *data) {
 				return 0;
 			}
 
-			fio.seekp(offset,ios::beg);
+			fio.seekp(offset*BLOCK_SIZE,ios::beg);
 			fio.write((char *)data, BLOCK_SIZE);
 			return 0;
 }

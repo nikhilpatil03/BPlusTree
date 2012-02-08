@@ -12,6 +12,7 @@ int keylen(KeyType *keytype){
 
 class Index{
 public:
+	FileHandler *fHandler;
 	TreeNode *root;
 	unsigned char *rootAddress;
 	KeyType keytype;
@@ -23,14 +24,16 @@ public:
 	Index(char* indexName, KeyType *keytype, int payloadlen){
 		utils = new Utils();
 		node_address_size = sizeof(unsigned int);
-		FileHandler *fHandler = new FileHandler(indexName);
+		fHandler = new FileHandler(indexName);
 		this->keytype.numAttrs = keytype->numAttrs;
 		for (int i=0; i < keytype->numAttrs;i++) {
 			this->keytype.attrTypes[i] = keytype->attrTypes[i];
 			this->keytype.attrLen[i] = keytype->attrLen[i];
 		}
 		this->payloadlen = payloadlen;
-
+		header = (char *)malloc(BLOCK_SIZE);
+		strncpy(&header[node_address_size],utils->getBytesForInt(payloadlen),sizeof(int));
+		strncpy(&header[node_address_size+sizeof(payloadlen)],utils->getBytesForKeyType(this->keytype),sizeof(keytype));
 	}
 
 	//returns -1 if first value is smaller
@@ -59,15 +62,22 @@ public:
 
 
 	Index(char* indexName){
-		FileHandler *fHandler = new FileHandler(indexName);
+		fHandler = new FileHandler(indexName);
 		header = (char *)malloc(BLOCK_SIZE);
 		fHandler->readBlock(0,header);
 		utils = new Utils();
 		utils->copyBytes(rootAddress,header,node_address_size);
 		root = (TreeNode *)utils->getUnsignedIntForBytes(rootAddress);
+		payloadlen= utils->getIntForBytes(&header[node_address_size]);
+		keytype = utils->getKeyTypeForBytes(&header[node_address_size+sizeof(payloadlen)]);
 	}
-	int insert(char key[], char payload[]){
 
+	int loadNode(TreeNode **here,char *offset){
+
+		fHandler->readBlock(utils->getIntForBytes(offset),)
+	}
+
+	int insert(char key[], char payload[]){
 		if(root == 0)
 		{
 			addFirstElement(key,payload);
@@ -75,7 +85,7 @@ public:
 		}
 		TreeNode * current = root;
 		char *nodekey;
-		TreeNode *accessPath[MAX_TREE_HEIGHT];
+		char accessPath[MAX_TREE_HEIGHT][NODE_OFFSET_SIZE];
 		int height = 0, i;
 		while(current != 0)
 		{
@@ -97,16 +107,32 @@ public:
 		}
 		return 0;
 	}
+	int storeNode(TreeNode *node, int offset){
+		char *block = (char *)malloc(BLOCK_SIZE);
+		int position = 0
+		strncpy(&block[position],utils->getBytesForInt(offset),sizeof(offset));
+		position += sizeof(offset);
+		block[position]=node->flag;
+		position += 1;
+		strncpy(&block[position],utils->getBytesForInt(node->numkeys),sizeof(node->numkeys));
+		position += sizeof(node->numkeys);
+
+
+
+
+	}
+
 	int addFirstElement(byte *key,byte *payload)
 	{
 		root = new TreeNode();
 		rootAddress = utils->getBytesForUnsignedInt((unsigned int)root);
-		header = (char *)malloc(BLOCK_SIZE);
 		utils->copyBytes(header,rootAddress,node_address_size);
+		fHandler->writeBlock(0,header);
 		root->numkeys = 1;
 		strncpy(root->keys, key, keylen(&keytype));
 		root->flag = 'c';
 		strncpy(root->payload, payload, payloadlen);
+		storeNode(root,2);
         return 0;
 	}
 	int handleNonLeaf(TreeNode **rcvd_node, int position) {
