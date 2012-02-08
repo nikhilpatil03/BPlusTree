@@ -282,8 +282,39 @@ public:
 			return 1;
 		return 0;
 	}
+
 	int lookup(char key[], char payload[]){
-		return 0;
+		if(root == 0) {
+			printf("BPlus Tree empty.");
+			return 1;
+		}
+		TreeNode * current = root;
+		char *nodekey;
+		nodekey = (char *)malloc(keylen(&keytype));
+		int i, isLesser;
+		while(current != 0) {
+			for (i = 0 ; i<current->numkeys ; i++ ) {
+				current->getKey(keytype,nodekey,i);
+//				nodekey = &(current->keys[keylen(&keytype)*i]);
+				isLesser = compare(nodekey,key);
+				if ( isLesser != -1) {
+					break;
+				}
+			}
+
+			if (current->flag == 'c') {
+				if (isLesser != 0)	//key not found
+					return 1;
+
+				//key found, copy payload
+				strncpy(payload,&(current->data[DATA_SIZE-(i+1)*payloadlen]),payloadlen);
+//				strncpy(payload, &(current->payload[payloadlen *i]),payloadlen);
+				return 0;
+			}
+			else
+				handleNonLeaf(&current, i);
+		}
+		return 1;
 	}
 };
 
