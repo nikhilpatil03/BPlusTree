@@ -23,6 +23,7 @@ public:
 	int copyBytes(char *,unsigned char *,int);
 	int copyBytes(unsigned char *,unsigned char *,int);
 	int copyBytes(unsigned char *, char *,int);
+	int copyBytes(char *, char *,int);
 };
 
 #endif /* UTILS_H_ */

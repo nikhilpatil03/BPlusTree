@@ -173,22 +173,49 @@ public:
 
 	int handleLeaf(byte key[], byte payload[], TreeNode **rcvd_node, int position, char accessPath[][NODE_OFFSET_SIZE],int height) {
 		TreeNode *node=*rcvd_node;
-		node->addData(keytype,key,payloadlen,payload,position);
+		if(splitNecessary(node->numkeys+1,node->flag) != 1)
+		{
+			node->addData(keytype,key,payloadlen,payload,position);
+			node->numkeys = node->numkeys + 1;
+		}
 //		for(int j = node->numkeys-1; j >= position; j--) {
 //			strncpy(&(node->keys[(j+1)*keylen(&keytype)]), &(node->keys[j*keylen(&keytype)]),keylen(&keytype));
 //		}
 //		strncpy(&(node->keys[position*keylen(&keytype)]),key, keylen(&keytype));
 
-		node->numkeys = node->numkeys + 1;
-		if(splitNecessary(node->numkeys,node->flag))
+
+//		if(splitNecessary(node->numkeys,node->flag))
+		else
 		{
 			TreeNode *newLeaf = new TreeNode();
+			int tempSpaceSize = DATA_SIZE+payloadlen+keylen(&keytype);
+			char tempSpace[130];
+//			char *tempSpace = (char *)malloc(tempSpaceSize);
+			utils->copyBytes(tempSpace,node->data,(node->numkeys)*keylen(&keytype));
+			utils->copyBytes(&tempSpace[tempSpaceSize-(node->numkeys)*payloadlen],&(node->data[DATA_SIZE-(node->numkeys)*payloadlen]),(node->numkeys)*payloadlen);
+			for(int j = node->numkeys-1; j >= (position); j--) {
+					strncpy(&(tempSpace[(j+1)*keylen(&keytype)]), &(tempSpace[j*keylen(&keytype)]),keylen(&keytype));
+				}
+			strncpy(&(tempSpace[(position)*keylen(&keytype)]),key, keylen(&keytype));
+
+			for(int j = (tempSpaceSize-node->numkeys*payloadlen); j < (tempSpaceSize-position*payloadlen); j+=payloadlen) {
+					strncpy(&(tempSpace[j-payloadlen]), &(tempSpace[j]),payloadlen);
+			}
+			strncpy(&(tempSpace[tempSpaceSize-(position+1)*payloadlen]),payload,payloadlen);
+			node->numkeys = node->numkeys+1;
 			int n_by_two = (node->numkeys)/2;
+			for(int i = 0 ; i < n_by_two ; i++)
+			{
+				strncpy(&(node->data[(i)*keylen(&keytype)]),&(tempSpace[(i*keylen(&keytype))]),keylen(&keytype));
+				strncpy(&(node->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),&(tempSpace[tempSpaceSize-((i+1)*payloadlen)]),payloadlen);
+			}
 			for(int i = n_by_two; i< node->numkeys ; i++)
 			{
-				node->getKey(keytype,&(newLeaf->data[(i-n_by_two)*keylen(&keytype)]),i);
+				strncpy(&(newLeaf->data[(i-n_by_two)*keylen(&keytype)]),&(tempSpace[(i*keylen(&keytype))]),keylen(&keytype));
+//				node->getKey(keytype,&(newLeaf->data[(i-n_by_two)*keylen(&keytype)]),i);
 //				strncpy(&(newLeaf->keys[(i-n_by_two)*keylen(&keytype)]),&(node->keys[(i)*keylen(&keytype)]),keylen(&keytype));
-				node->getPayload(payloadlen,&(newLeaf->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),i);
+				strncpy(&(newLeaf->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),&(tempSpace[tempSpaceSize-((i+1)*payloadlen)]),payloadlen);
+//				node->getPayload(payloadlen,&(newLeaf->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),i);
 //				strncpy(&(newLeaf->payload[(i-n_by_two)*payloadlen]),&(node->payload[(i)*payloadlen]),payloadlen);
 			}
 			newLeaf->flag = 'c';
@@ -228,6 +255,7 @@ public:
 			free(block);
 			return 0;
 		}
+
 		TreeNode *parent = new TreeNode();
 		loadNode(parent,parentOffset);
 		int i;

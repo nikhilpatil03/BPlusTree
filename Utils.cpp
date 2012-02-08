@@ -90,6 +90,14 @@ int Utils::copyBytes(char *destination , unsigned char * source , int number){
 	return 0;
 }
 
+int Utils::copyBytes(char *destination , char * source , int number){
+	for (int i = 0 ; i<number ; i++)
+		destination[i] = source [i];
+	return 0;
+}
+
+
+
 int Utils::copyBytes(unsigned char *destination , char * source , int number){
 	for (int i = 0 ; i<number ; i++)
 		destination[i] = source [i];
