@@ -109,7 +109,7 @@ public:
 	}
 	int storeNode(TreeNode *node, int offset){
 		char *block = (char *)malloc(BLOCK_SIZE);
-		int position = 0
+		int position = 0;
 		strncpy(&block[position],utils->getBytesForInt(offset),sizeof(offset));
 		position += sizeof(offset);
 		block[position]=node->flag;
@@ -237,8 +237,36 @@ public:
 			return 1;
 		return 0;
 	}
+
 	int lookup(char key[], char payload[]){
-		return 0;
+		if(root == 0) {
+			printf("BPlus Tree empty.");
+			return 1;
+		}
+		TreeNode * current = root;
+		char *nodekey;
+		int i, isLesser;
+		while(current != 0) {
+			for (i = 0 ; i<current->numkeys ; i++ ) {
+				nodekey = &(current->keys[keylen(&keytype)*i]);
+				isLesser = compare(nodekey,key);
+				if ( isLesser != -1) {
+					break;
+				}
+			}
+
+			if (current->flag == 'c') {
+				if (isLesser != 0)	//key not found
+					return 1;
+
+				//key found, copy payload
+				strncpy(payload, &(current->payload[payloadlen *i]),payloadlen);
+				return 0;
+			}
+			else
+				handleNonLeaf(&current, i);
+		}
+		return 1;
 	}
 };
 
