@@ -1,24 +1,32 @@
-///*
-// * TreeNode.cpp
-// *
-// *  Created on: 06-Feb-2012
-// *      Author: nikhil
-// */
-//#include<common.h>
-//
-//class TreeNode {
-//public:
-//	int numkeys;
-//	byte keys[];
-//	byte myaddr[8];
-//	union {
-//		byte children[];
-//		byte payload[];
-//	};
-//	char flag;
-//
-////	TreeNode()
-////	{
-////		sprintf(myaddr,"%u",this);
-////	}
-//};
+/*
+ * TreeNode.cpp
+ *
+ *  Created on: 08-Feb-2012
+ *      Author: sandeep
+ */
+
+#include "TreeNode.h"
+
+namespace std {
+
+TreeNode::TreeNode() {
+	// TODO Auto-generated constructor stub
+	utils = new Utils();
+}
+
+
+int TreeNode::addData(KeyType keytype,char *key, int payloadlen,char *payload){
+
+}
+
+int TreeNode::getKey(KeyType keytype,char *key,int position){
+	int keystart = NODE_HEADER_LENGTH;
+	strncpy(key,&(data[keystart+(position*keylen(&keytype))]),keylen(&keytype));
+	return 0;
+}
+
+TreeNode::~TreeNode() {
+	// TODO Auto-generated destructor stub
+}
+
+} /* namespace std */
