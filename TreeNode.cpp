@@ -7,7 +7,6 @@
 
 #include "TreeNode.h"
 
-namespace std {
 
 TreeNode::TreeNode() {
 	// TODO Auto-generated constructor stub
@@ -15,8 +14,17 @@ TreeNode::TreeNode() {
 }
 
 
-int TreeNode::addData(KeyType keytype,char *key, int payloadlen,char *payload){
+int TreeNode::addData(KeyType keytype,char *key, int payloadlen,char *payload,int position){
+	for(int j = (numkeys-1+NODE_HEADER_LENGTH); j >= (position+NODE_HEADER_LENGTH); j-=keylen(&keytype)) {
+		strncpy(&(data[(j+1)*keylen(&keytype)]), &(data[j*keylen(&keytype)]),keylen(&keytype));
+	}
+	strncpy(&(data[(position+NODE_HEADER_LENGTH)*keylen(&keytype)]),key, keylen(&keytype));
 
+	for(int j = (DATA_SIZE-numkeys*payloadlen); j < (DATA_SIZE-position*payloadlen); j+=payloadlen) {
+			strncpy(&(data[(j-1)*payloadlen]), &(data[j*payloadlen]),payloadlen);
+	}
+	strncpy(&(data[DATA_SIZE-position*payloadlen]),payload,payloadlen);
+	return 0;
 }
 
 int TreeNode::getKey(KeyType keytype,char *key,int position){
@@ -35,4 +43,3 @@ TreeNode::~TreeNode() {
 	// TODO Auto-generated destructor stub
 }
 
-} /* namespace std */

@@ -6,7 +6,7 @@
  */
 
 #include "Utils.h"
-
+#include "common.h"
 
 Utils::Utils() {
 	// TODO Auto-generated constructor stub
@@ -51,12 +51,12 @@ KeyType  Utils::getKeyTypeForBytes(char * input)
 {
 	KeyType key;
 	key.numAttrs = getIntForBytes(input);
-	int offset = offset + sizeof(int);
+	int offset = sizeof(int);
 	for(int i = 0 ; i < key.numAttrs ; i++)
 	{
 		key.attrLen[i] = getIntForBytes(&input[offset]);
 		offset = offset + sizeof(int);
-		key.attrTypes[i] = getIntForBytes(&input[offset]);
+		key.attrTypes[i] = (attrType)getIntForBytes(&input[offset]);
 		offset = offset + sizeof(int);
 	}
 	return key;
