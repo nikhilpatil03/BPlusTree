@@ -12,7 +12,7 @@
 class TreeNode {
 public:
 	int numkeys;
-	byte data[BLOCK_SIZE - NODE_HEADER_LENGTH];
+	byte data[DATA_SIZE];
 //	byte keys[1000];
 	byte myaddr[NODE_OFFSET_SIZE];
 	Utils *utils;

@@ -15,7 +15,7 @@ class Index{
 public:
 	FileHandler *fHandler;
 	TreeNode *root;
-	char *rootAddress;
+	char rootAddress[NODE_OFFSET_SIZE];
 	KeyType keytype;
 	int payloadlen;
 	class Utils *utils;
@@ -24,7 +24,6 @@ public:
 
 	Index(char* indexName, KeyType *keytype, int payloadlen){
 		utils = new Utils();
-		node_address_size = sizeof(unsigned int);
 		fHandler = new FileHandler(indexName);
 		this->keytype.numAttrs = keytype->numAttrs;
 		for (int i=0; i < keytype->numAttrs;i++) {
@@ -78,11 +77,14 @@ public:
 			if(offset == -1)
 			{
 				offset = fHandler->getSize();
+
 			}
-			char *block = (char *)malloc(BLOCK_SIZE);
+			strncpy(node->myaddr,utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
+			char block[BLOCK_SIZE];
+//			char *block = (char *)malloc(BLOCK_SIZE*sizeof(char));
 			int position = 0;
-			strncpy(&block[position],utils->getBytesForInt(offset),sizeof(offset));
-			position += sizeof(offset);
+			strncpy(&block[position],utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
+			position += NODE_OFFSET_SIZE;
 			block[position]=node->flag;
 			position += 1;
 			strncpy(&block[position],utils->getBytesForInt(node->numkeys),sizeof(node->numkeys));
@@ -98,7 +100,7 @@ public:
 		char *block = (char *)malloc(BLOCK_SIZE);
 		fHandler->readBlock(utils->getIntForBytes(offset),block);
 		strncpy(here->myaddr,offset,NODE_OFFSET_SIZE);
-		position+= sizeof(offset);
+		position+= NODE_OFFSET_SIZE;
 		here->flag = block[position];
 		position+=1;
 		here->numkeys = utils->getIntForBytes(&(block[position]));
@@ -138,19 +140,21 @@ public:
 			else
 				handleNonLeaf(&current, i);
 		}
+//		free(nodekey);
 		return 0;
 	}
 
 	int addFirstElement(byte *key,byte *payload)
 	{
 		root = new TreeNode();
-
+		root->numkeys = 0;
 		root->flag = 'c';
 		root->addData(keytype,key,payloadlen,payload,0);
 		root->numkeys = 1;
 //		strncpy(root->keys, key, keylen(&keytype));
 //		strncpy(root->payload, payload, payloadlen);
-		strncpy(header,utils->getBytesForInt(2),NODE_OFFSET_SIZE);
+		strncpy(header,utils->getBytesForInt(1),NODE_OFFSET_SIZE);
+		strncpy(rootAddress,utils->getBytesForInt(1),NODE_OFFSET_SIZE);
 		fHandler->writeBlock(0,header);
 		storeNode(root,1);
         return 0;
@@ -184,11 +188,11 @@ public:
 			{
 				node->getKey(keytype,&(newLeaf->data[(i-n_by_two)*keylen(&keytype)]),i);
 //				strncpy(&(newLeaf->keys[(i-n_by_two)*keylen(&keytype)]),&(node->keys[(i)*keylen(&keytype)]),keylen(&keytype));
-				node->getPayload(payloadlen,&(newLeaf->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),payloadlen);
+				node->getPayload(payloadlen,&(newLeaf->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),i);
 //				strncpy(&(newLeaf->payload[(i-n_by_two)*payloadlen]),&(node->payload[(i)*payloadlen]),payloadlen);
 			}
 			newLeaf->flag = 'c';
-			newLeaf->numkeys = n_by_two;
+			newLeaf->numkeys = node->numkeys - n_by_two;
 			node->numkeys = n_by_two;
 			TreeNode* parent = new TreeNode();
 			for(int i = 0 ; i < height ; i++)
@@ -205,7 +209,7 @@ public:
 		return 0;
 	}
 	int insertIntoParent(byte left[NODE_OFFSET_SIZE],byte key[],byte right[NODE_OFFSET_SIZE],byte parentOffset[NODE_OFFSET_SIZE],int height,char accessPath[][NODE_OFFSET_SIZE]){
-		if(rootAddress == left)
+		if(strncmp(rootAddress,left,NODE_OFFSET_SIZE) == 0)
 		{
 			TreeNode *newRoot = new TreeNode();
 			newRoot->numkeys = 1;
@@ -276,9 +280,9 @@ public:
 	int splitNecessary(int numkeys,char type){
 		int allowedKeys;
 		if(type == 'c')
-			allowedKeys = (BLOCK_SIZE)/((keylen(&keytype)+payloadlen)+16);
+			allowedKeys = (DATA_SIZE)/((keylen(&keytype)+payloadlen)+NODE_OFFSET_SIZE);
 		else
-			allowedKeys = (BLOCK_SIZE)/((keylen(&keytype)+16)+16);
+			allowedKeys = (DATA_SIZE)/((keylen(&keytype)+NODE_OFFSET_SIZE)+NODE_OFFSET_SIZE);
 		if(numkeys > allowedKeys)
 			return 1;
 		return 0;
@@ -323,8 +327,8 @@ int main(){
 	KeyType keyType;
 	keyType.numAttrs=1;
 	keyType.attrTypes[0]=stringType;
-	keyType.attrLen[0]=sizeof(int);
-	char *filename = "/home/sandeep/work/cs631/index.ind";
+	keyType.attrLen[0]=26;
+	char *filename = "/home/sandeep/work/cs631/BPlusTree/index.ind";
 	class Index *index = new Index(filename,&keyType,8);
 
 	index->insert("2","2");
