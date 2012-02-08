@@ -1,22 +1,15 @@
-/*
- * FileHandler.h
- *
- *  Created on: 08-Feb-2012
- *      Author: sandeep
- */
+#include <iostream>
+#include <fstream>
 
-#ifndef FILEHANDLER_H_
-#define FILEHANDLER_H_
 
+using namespace std;
 
 class FileHandler {
-	FILE * filePointer;
+private:
+	 fstream fio;
 public:
 	FileHandler(char *fileName);
-	virtual ~FileHandler();
-	int readBlock(int offset, byte *data);
-	int writeBlock(int offset, byte *data);
-	int close();
+	~FileHandler() ;
+	int readBlock(int offset, byte *data) ;
+	int writeBlock(int offset, byte *data) ;
 };
-
-#endif /* FILEHANDLER_H_ */

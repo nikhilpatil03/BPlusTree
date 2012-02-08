@@ -9,39 +9,48 @@
 #include <common.h>
 
 FileHandler::FileHandler(char *fileName) {
-	// A constructor to create and/or open file named "fileName" for reading or writing depending on mode.
-			filePointer = fopen(fileName, "a+");
-			if (!filePointer) {
-				printf("Failed to open file %s",fileName);
-			}
-
+ fio.open(fileName, ios:: in | ios::out | ios::binary);		//pass mode as iso:: in | ios::out | ios::binary
+	if(!fio) {
+		printf("File opening failed.");
+	}
 }
 
+
+
 int FileHandler::readBlock(int offset, byte *data) {
-		if (offset % BLOCK_SIZE != 0) {
+if (offset % BLOCK_SIZE != 0) {
 			printf("Offset is not aligned to block boundaries.");
 			return 1;
 		}
-
-		return (fread(data, 1, BLOCK_SIZE, filePointer) == BLOCK_SIZE);
-	}
-
-	int FileHandler::writeBlock(int offset, byte *data) {
-		if (offset % BLOCK_SIZE != 0) {
-			printf("Offset is not aligned to block boundaries.");
-						return 1;
+		fio.seekp(0,ios::end);
+		if (offset + BLOCK_SIZE > fio.tellp()) {
+			printf("Error: Reading beyond the file.");
+			return 0;
 		}
-
-		return (fwrite(data, 1, BLOCK_SIZE, filePointer) == BLOCK_SIZE);
-	}
-
-	int FileHandler::close() {
-		return fclose(filePointer);
+		fio.seekg(offset,ios::beg);
+		fio.read((char *)data, BLOCK_SIZE);
+		return 1;
 	}
 
 
+int FileHandler::writeBlock(int offset, byte *data) {
+	if (offset % BLOCK_SIZE != 0) {
+				printf("Offset is not aligned to block boundaries.");
+				return 1;
+			}
+
+			fio.seekp(0,ios::end);
+			if (offset > fio.tellp()+1) {
+				printf("Error: Offset > fileSize, causing to create holes in the file.");
+				return 0;
+			}
+
+			fio.seekp(offset,ios::beg);
+			fio.write((char *)data, BLOCK_SIZE);
+			return 0;
+}
 
 FileHandler::~FileHandler() {
-	// TODO Auto-generated destructor stub
+	fio.close();
 }
 
