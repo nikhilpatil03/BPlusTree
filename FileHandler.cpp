@@ -50,6 +50,17 @@ int FileHandler::writeBlock(int offset, byte *data) {
 			return 0;
 }
 
+int FileHandler::writeBlock(byte *data) {
+			fio.seekp(0,ios::end);
+			fio.write((char *)data, BLOCK_SIZE);
+			return 0;
+}
+
+int FileHandler::getSize() {
+	fio.seekg(0,ios::end);
+	return (fio.tellg()+1)/BLOCK_SIZE;
+}
+
 FileHandler::~FileHandler() {
 	fio.close();
 }

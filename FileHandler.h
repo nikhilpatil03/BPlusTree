@@ -12,4 +12,6 @@ public:
 	~FileHandler() ;
 	int readBlock(int offset, byte *data) ;
 	int writeBlock(int offset, byte *data) ;
+	int writeBlock(byte *data) ;
+	int getSize();
 };
