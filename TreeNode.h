@@ -12,14 +12,9 @@
 class TreeNode {
 public:
 	int numkeys;
-	byte data[BLOCK_SIZE - NODE_HEADER_LENGTH];
-//	byte keys[1000];
+	byte data[DATA_SIZE];
 	byte myaddr[NODE_OFFSET_SIZE];
 	Utils *utils;
-//	union {
-//		unsigned char children[64];
-//		byte payload[64];
-//	};
 	char flag;
 	TreeNode();
 	~TreeNode();
