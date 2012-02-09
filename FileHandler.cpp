@@ -9,7 +9,7 @@
 #include "common.h"
 
 FileHandler::FileHandler(char *inputFileName) {
-	fio.open(inputFileName, ios::out | ios::binary);		//pass mode as iso:: in | ios::out | ios::binary
+	fio.open(inputFileName, ios::out | ios::binary);
 	if(!fio) {
 		printf("File opening failed.");
 		exit(1);
@@ -17,6 +17,17 @@ FileHandler::FileHandler(char *inputFileName) {
 	fio.close();
 	fio.open(inputFileName, ios::out | ios::in | ios::binary);
 }
+
+
+FileHandler::FileHandler(char *inputFileName,char open) {
+	fio.open(inputFileName, ios::out | ios::in | ios::binary);
+	if(!fio) {
+		printf("File opening failed.");
+		exit(1);
+	}
+
+}
+
 
 
 
@@ -59,6 +70,7 @@ int FileHandler::getSize() {
 }
 
 FileHandler::~FileHandler() {
+	printf("Writing Index File!");
 	fio.close();
 }
 

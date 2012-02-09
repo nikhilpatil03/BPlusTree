@@ -22,6 +22,10 @@ public:
 	char *header;
 	int node_address_size;
 
+	~Index(){
+
+	}
+
 	Index(char* indexName, KeyType *keytype, int payloadlen){
 		utils = new Utils();
 		fHandler = new FileHandler(indexName);
@@ -33,7 +37,7 @@ public:
 		this->payloadlen = payloadlen;
 		header = (char *)malloc(BLOCK_SIZE);
 		utils->copyBytes(&header[NODE_OFFSET_SIZE],utils->getBytesForInt(payloadlen),sizeof(int));
-		utils->copyBytes(&header[NODE_OFFSET_SIZE+sizeof(payloadlen)],utils->getBytesForKeyType(this->keytype),sizeof(keytype));
+		utils->copyBytes(&header[NODE_OFFSET_SIZE+sizeof(payloadlen)],utils->getBytesForKeyType(this->keytype),sizeof(KeyType));
 	}
 
 	//returns -1 if first value is smaller
@@ -62,15 +66,15 @@ public:
 
 
 	Index(char* indexName){
-		fHandler = new FileHandler(indexName);
+		fHandler = new FileHandler(indexName,'o');
 		header = (char *)malloc(BLOCK_SIZE);
 		fHandler->readBlock(0,header);
 		utils = new Utils();
-		utils->copyBytes(rootAddress,header,node_address_size);
+		utils->copyBytes(rootAddress,header,NODE_OFFSET_SIZE);
 		root = new TreeNode();
 		loadNode(root,rootAddress);
-		payloadlen= utils->getIntForBytes(&header[node_address_size]);
-		keytype = utils->getKeyTypeForBytes(&header[node_address_size+sizeof(payloadlen)]);
+		payloadlen= utils->getIntForBytes(&header[NODE_OFFSET_SIZE]);
+		keytype = utils->getKeyTypeForBytes(&header[NODE_OFFSET_SIZE+sizeof(payloadlen)]);
 	}
 	int storeNode(TreeNode *node, long long int offset){
 			if(offset == -1)
@@ -237,6 +241,7 @@ public:
 		{
 			TreeNode *newRoot = new TreeNode();
 			newRoot->numkeys = 1;
+			newRoot->flag='n';
 			utils->copyBytes(newRoot->data,key,keylen(&keytype));
 			utils->copyBytes(&(newRoot->data[DATA_SIZE-NODE_OFFSET_SIZE]),left,NODE_OFFSET_SIZE);
 			utils->copyBytes(&(newRoot->data[DATA_SIZE-NODE_OFFSET_SIZE*2]),right,NODE_OFFSET_SIZE);
@@ -393,15 +398,22 @@ int main(){
 	keyType.attrTypes[0]=stringType;
 	keyType.attrLen[0]=26;
 	char *filename = "/home/sandeep/work/cs631/BPlusTree/index.ind";
-	class Index *index = new Index(filename,&keyType,8);
+//	class Index *index = new Index(filename,&keyType,8);
+	class Index *index = new Index(filename);
+//	index->insert("2","2");
+//	index->insert("3","3");
+//	index->insert("1","1");
+//	index->insert("5","5");
+//	index->insert("33","33");
+//	index->insert("23","23");
+//	delete(index);
+//	index->insert("7","7");
+//	index->insert("9","9");
+	index->insert("4","4");
+	index->insert("45","45");
+	index->insert("46","46");
 
-	index->insert("2","2");
-	index->insert("3","3");
-	index->insert("1","1");
-	index->insert("5","5");
-	index->insert("33","33");
-	index->insert("23","23");
-	index->insert("7","7");
-	index->insert("9","9");
+//	index->insert("","2");
+
 	return 0;
 }
