@@ -19,6 +19,7 @@ public:
 	unsigned char* getBytesForUnsignedInt(unsigned int input);
 	KeyType getKeyTypeForBytes(char* );
 	char * getBytesForKeyType(KeyType k);
+	char * getBytesForInt(long long int input);
 	char * getBytesForInt(int input);
 	int copyBytes(char *,unsigned char *,int);
 	int copyBytes(unsigned char *,unsigned char *,int);

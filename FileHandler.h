@@ -12,8 +12,8 @@ private:
 public:
 	FileHandler(char *fileName);
 	~FileHandler() ;
-	int readBlock(int offset, byte *data) ;
-	int writeBlock(int offset, byte *data) ;
+	int readBlock(long long int offset, byte *data) ;
+	int writeBlock(long long int offset, byte *data) ;
 	int writeBlock(byte *data) ;
 	int getSize();
 };

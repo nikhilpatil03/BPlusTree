@@ -72,7 +72,7 @@ public:
 		payloadlen= utils->getIntForBytes(&header[node_address_size]);
 		keytype = utils->getKeyTypeForBytes(&header[node_address_size+sizeof(payloadlen)]);
 	}
-	int storeNode(TreeNode *node, int offset){
+	int storeNode(TreeNode *node, long long int offset){
 			if(offset == -1)
 			{
 				offset = fHandler->getSize();
@@ -95,7 +95,7 @@ public:
 
 	int loadNode(TreeNode *here,char *offset){
 		int position=0;
-		char *block = (char *)malloc(BLOCK_SIZE);
+		char *block = (char *)calloc(BLOCK_SIZE,BLOCK_SIZE);
 		fHandler->readBlock(utils->getIntForBytes(offset),block);
 		utils->copyBytes(here->myaddr,offset,NODE_OFFSET_SIZE);
 		position+= NODE_OFFSET_SIZE;
@@ -114,14 +114,14 @@ public:
 			addFirstElement(key,payload);
 			return 0;
 		}
-		TreeNode * current = root;
+		TreeNode * current = new TreeNode();
+		loadNode(current,rootAddress);
 		char *nodekey;
 		nodekey = (char *)malloc(keylen(&keytype));
 		char accessPath[MAX_TREE_HEIGHT][NODE_OFFSET_SIZE];
 		int height = 0, i;
 		while(current != 0)
 		{
-
 			utils->copyBytes((accessPath[height++]),(current->myaddr),NODE_OFFSET_SIZE);
 			for (i = 0 ; i<current->numkeys ; i++ )
 			{
@@ -139,7 +139,9 @@ public:
 				handleNonLeaf(&current, i);
 		}
 		free(nodekey);
+		loadNode(root,rootAddress);
 		return 0;
+
 	}
 
 	int addFirstElement(byte *key,byte *payload)
@@ -149,8 +151,8 @@ public:
 		root->flag = 'c';
 		root->addData(keytype,key,payloadlen,payload,0);
 		root->numkeys = 1;
-		utils->copyBytes(header,utils->getBytesForInt(1),NODE_OFFSET_SIZE);
-		utils->copyBytes(rootAddress,utils->getBytesForInt(1),NODE_OFFSET_SIZE);
+		utils->copyBytes(header,utils->getBytesForInt((long long int)1),NODE_OFFSET_SIZE);
+		utils->copyBytes(rootAddress,utils->getBytesForInt((long long int)1),NODE_OFFSET_SIZE);
 		fHandler->writeBlock(0,header);
 		storeNode(root,1);
         return 0;
@@ -171,29 +173,33 @@ public:
 		{
 			node->addData(keytype,key,payloadlen,payload,position);
 			node->numkeys = node->numkeys + 1;
+			storeNode(node,utils->getIntForBytes(node->myaddr));
 		}
 		else
 		{
 			TreeNode *newLeaf = new TreeNode();
 			int tempSpaceSize = DATA_SIZE+payloadlen+keylen(&keytype);
+//			char *tempSpace = (char*)calloc(tempSpaceSize,sizeof(char));
 			char tempSpace[130];
+			for(int i = 0 ; i < 130 ; i++)
+				tempSpace[i] = '\0';
 			utils->copyBytes(tempSpace,node->data,(node->numkeys)*keylen(&keytype));
 			utils->copyBytes(&tempSpace[tempSpaceSize-(node->numkeys)*payloadlen],&(node->data[DATA_SIZE-(node->numkeys)*payloadlen]),(node->numkeys)*payloadlen);
 			for(int j = node->numkeys-1; j >= (position); j--) {
 					utils->copyBytes(&(tempSpace[(j+1)*keylen(&keytype)]), &(tempSpace[j*keylen(&keytype)]),keylen(&keytype));
 				}
-			utils->copyBytes(&(tempSpace[(position)*keylen(&keytype)]),key, keylen(&keytype));
+			strncpy(&(tempSpace[(position)*keylen(&keytype)]),key, keylen(&keytype));
 
 			for(int j = (tempSpaceSize-node->numkeys*payloadlen); j < (tempSpaceSize-position*payloadlen); j+=payloadlen) {
 					utils->copyBytes(&(tempSpace[j-payloadlen]), &(tempSpace[j]),payloadlen);
 			}
-			utils->copyBytes(&(tempSpace[tempSpaceSize-(position+1)*payloadlen]),payload,payloadlen);
+			strncpy(&(tempSpace[tempSpaceSize-(position+1)*payloadlen]),payload,payloadlen);
 			node->numkeys = node->numkeys+1;
 			int n_by_two = (node->numkeys)/2;
 			for(int i = 0 ; i < n_by_two ; i++)
 			{
 				utils->copyBytes(&(node->data[(i)*keylen(&keytype)]),&(tempSpace[(i*keylen(&keytype))]),keylen(&keytype));
-				utils->copyBytes(&(node->data[DATA_SIZE-((i+1)-n_by_two)*payloadlen]),&(tempSpace[tempSpaceSize-((i+1)*payloadlen)]),payloadlen);
+				utils->copyBytes(&(node->data[DATA_SIZE-((i+1))*payloadlen]),&(tempSpace[tempSpaceSize-((i+1)*payloadlen)]),payloadlen);
 			}
 			for(int i = n_by_two; i< node->numkeys ; i++)
 			{
@@ -205,12 +211,23 @@ public:
 			node->numkeys = n_by_two;
 			TreeNode* parent = new TreeNode();
 			for(int i = 0 ; i < height ; i++)
-				if(accessPath[i] == (node->myaddr))
-					loadNode(parent,accessPath[i]);
+				if(strncmp(accessPath[i],(node->myaddr),NODE_OFFSET_SIZE) == 0)
+					loadNode(parent,accessPath[i-1]);
 			char* nextKey =(char *) malloc(keylen(&keytype));
 			newLeaf->getKey(keytype,nextKey,0);
+			storeNode(node,utils->getIntForBytes(node->myaddr));
 			storeNode(newLeaf,-1);
-			insertIntoParent(node->myaddr,nextKey,newLeaf->myaddr,parent->myaddr,height,accessPath);
+			char left[NODE_OFFSET_SIZE];
+			utils->copyBytes(left,node->myaddr,NODE_OFFSET_SIZE);
+			char right[NODE_OFFSET_SIZE];
+			utils->copyBytes(right,newLeaf->myaddr,NODE_OFFSET_SIZE);
+			char parentAdd[NODE_OFFSET_SIZE];
+			utils->copyBytes(parentAdd,parent->myaddr,NODE_OFFSET_SIZE);
+			if(node != root)
+				delete(node);
+			delete(newLeaf);
+			delete(parent);
+			insertIntoParent(left,nextKey,right,parentAdd,height,accessPath);
 		}
 		*rcvd_node=0;
 		return 0;
@@ -220,7 +237,8 @@ public:
 		{
 			TreeNode *newRoot = new TreeNode();
 			newRoot->numkeys = 1;
-			newRoot->addData(keytype,key,NODE_OFFSET_SIZE,left,0);
+			utils->copyBytes(newRoot->data,key,keylen(&keytype));
+			utils->copyBytes(&(newRoot->data[DATA_SIZE-NODE_OFFSET_SIZE]),left,NODE_OFFSET_SIZE);
 			utils->copyBytes(&(newRoot->data[DATA_SIZE-NODE_OFFSET_SIZE*2]),right,NODE_OFFSET_SIZE);
 			root = newRoot;
 			storeNode(newRoot,-1);
@@ -247,29 +265,81 @@ public:
 				break;
 			}
 		}
-
-		parent->addData(keytype,key,NODE_OFFSET_SIZE,right,NODE_OFFSET_SIZE);
-		parent->numkeys = parent->numkeys +1;
-		if(splitNecessary(parent->numkeys,'n'))
+		if(splitNecessary(parent->numkeys+1,parent->flag) != 1)
+		{
+			parent->addData(keytype,key,NODE_OFFSET_SIZE,right,i);
+			parent->numkeys = parent->numkeys +1;
+			storeNode(parent,utils->getIntForBytes(parent->myaddr));
+		}
+		else
 		{
 			TreeNode *newNonLeaf = new TreeNode();
+			int numPointers = parent->numkeys;
+			if(parent->flag != 'c')
+				numPointers++;
+			int tempSpaceSize = DATA_SIZE+payloadlen+keylen(&keytype);
+			char tempSpace[130];
+			for ( int k = 0 ; k < 130; k ++)
+				tempSpace[k] = '\0';
+			utils->copyBytes(tempSpace,parent->data,(parent->numkeys)*keylen(&keytype));
+//			if(parent->flag != 'c')
+//				utils->copyBytes(&tempSpace[tempSpaceSize-(parent->numkeys+1)*NODE_OFFSET_SIZE],&(parent->data[DATA_SIZE-(parent->numkeys+1)*NODE_OFFSET_SIZE]),(parent->numkeys+1)*NODE_OFFSET_SIZE);
+//			else
+			utils->copyBytes(&tempSpace[tempSpaceSize-(numPointers)*NODE_OFFSET_SIZE],&(parent->data[DATA_SIZE-(numPointers)*NODE_OFFSET_SIZE]),(numPointers)*NODE_OFFSET_SIZE);
+			for(int j = parent->numkeys-1; j >= (i); j--) {
+					utils->copyBytes(&(tempSpace[(j+1)*keylen(&keytype)]), &(tempSpace[j*keylen(&keytype)]),keylen(&keytype));
+				}
+			strncpy(&(tempSpace[(i)*keylen(&keytype)]),key, keylen(&keytype));
+			int pointerPosition = i;
+			if(parent->flag != 'c')
+				pointerPosition ++;
+			for(int j = (tempSpaceSize-numPointers*NODE_OFFSET_SIZE); j < (tempSpaceSize-pointerPosition*NODE_OFFSET_SIZE); j+=NODE_OFFSET_SIZE) {
+					utils->copyBytes(&(tempSpace[j-NODE_OFFSET_SIZE]), &(tempSpace[j]),NODE_OFFSET_SIZE);
+			}
+			strncpy(&(tempSpace[tempSpaceSize-(pointerPosition+1)*NODE_OFFSET_SIZE]),right,NODE_OFFSET_SIZE);
+
+			parent->numkeys = parent->numkeys+1;
 			int n_by_two = (parent->numkeys)/2;
+			int k = 0;
+			for(int i = 0 ; i < n_by_two ; i++)
+			{
+				utils->copyBytes(&(parent->data[(i)*keylen(&keytype)]),&(tempSpace[(i*keylen(&keytype))]),keylen(&keytype));
+				utils->copyBytes(&(parent->data[DATA_SIZE-((i+1))*NODE_OFFSET_SIZE]),&(tempSpace[tempSpaceSize-((i+1)*NODE_OFFSET_SIZE)]),NODE_OFFSET_SIZE);
+				k = i+1;
+			}
+			if(parent->flag != 'c')
+				utils->copyBytes(&(parent->data[DATA_SIZE-((k+1))*NODE_OFFSET_SIZE]),&(tempSpace[tempSpaceSize-((k+1)*NODE_OFFSET_SIZE)]),NODE_OFFSET_SIZE);
 			for(int i = n_by_two+1; i< parent->numkeys ; i++)
 			{
-				parent->getKey(keytype,&(newNonLeaf->data[(i-n_by_two+1)*keylen(&keytype)]),i);
-				parent->getPayload(payloadlen,&(newNonLeaf->data[DATA_SIZE-((i+1)-n_by_two+1)*payloadlen]),payloadlen);
+				utils->copyBytes(&(newNonLeaf->data[(i-(n_by_two+1))*keylen(&keytype)]),&(tempSpace[(i*keylen(&keytype))]),keylen(&keytype));
+				utils->copyBytes(&(newNonLeaf->data[DATA_SIZE-((i+1)-(n_by_two+1))*NODE_OFFSET_SIZE]),&(tempSpace[tempSpaceSize-((i+1)*NODE_OFFSET_SIZE)]),NODE_OFFSET_SIZE);
+				k= i+1;
 			}
+			if(parent->flag !='c')
+				utils->copyBytes(&(newNonLeaf->data[DATA_SIZE-((k+1)-(n_by_two+1))*NODE_OFFSET_SIZE]),&(tempSpace[tempSpaceSize-((k+1)*NODE_OFFSET_SIZE)]),NODE_OFFSET_SIZE);
 			newNonLeaf->flag = 'n';
-			newNonLeaf->numkeys = n_by_two-1;
+			newNonLeaf->numkeys = parent->numkeys - n_by_two -1;
 			parent->numkeys = n_by_two;
 			TreeNode* grandParent = new TreeNode();
 			for(int i = 0 ; i < height ; i++)
-				if((accessPath[i])==(parent->myaddr))
+				if(strncmp(accessPath[i],(parent->myaddr),NODE_OFFSET_SIZE) == 0)
 					loadNode(grandParent,accessPath[i-1]);
 			char* nextKey =(char *) malloc(keylen(&keytype));
-			parent->getKey(keytype,nextKey,0);
+			utils->copyBytes(nextKey,&(tempSpace[(n_by_two*keylen(&keytype))]),keylen(&keytype));
+//			newNonLeaf->getKey(keytype,nextKey,0);
 			storeNode(newNonLeaf,-1);
-			insertIntoParent(parent->myaddr,nextKey,newNonLeaf->myaddr,grandParent->myaddr,height,accessPath);
+			storeNode(parent,utils->getIntForBytes(parent->myaddr));
+			char left[NODE_OFFSET_SIZE];
+			utils->copyBytes(left,parent->myaddr,NODE_OFFSET_SIZE);
+			char right[NODE_OFFSET_SIZE];
+			utils->copyBytes(right,newNonLeaf->myaddr,NODE_OFFSET_SIZE);
+			char parentAdd[NODE_OFFSET_SIZE];
+			utils->copyBytes(parentAdd,grandParent->myaddr,NODE_OFFSET_SIZE);
+			if(parent!=root)
+				delete(parent);
+			delete(newNonLeaf);
+			delete(grandParent);
+			insertIntoParent(left,nextKey,right,parentAdd,height,accessPath);
 		}
 		return 0;
 	}
@@ -332,5 +402,6 @@ int main(){
 	index->insert("33","33");
 	index->insert("23","23");
 	index->insert("7","7");
+	index->insert("9","9");
 	return 0;
 }

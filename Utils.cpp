@@ -22,6 +22,16 @@ unsigned char* Utils::getBytesForUnsignedInt(unsigned int input)
 	return u.bytes;
 }
 
+char* Utils::getBytesForInt(long long int input)
+{
+	union{
+		char bytes[sizeof(input)];
+		long long int in;
+	} u;
+	u.in = input;
+	return u.bytes;
+}
+
 char* Utils::getBytesForInt(int input)
 {
 	union{
@@ -31,6 +41,9 @@ char* Utils::getBytesForInt(int input)
 	u.in = input;
 	return u.bytes;
 }
+
+
+
 
 char* Utils::getBytesForKeyType(KeyType input)
 {
@@ -72,13 +85,13 @@ unsigned int Utils::getUnsignedIntForBytes(unsigned char bytes[4]){
 		return u.in;
 }
 
-int Utils::getIntForBytes(char bytes[4]){
+int Utils::getIntForBytes(char *bytes){
 	union{
 			char bytes[sizeof(int)];
 			int in;
 		} u;
-		for ( int i = 0 ; i < sizeof(int) ; i ++)
-			u.bytes[i]=bytes[i];
+
+		copyBytes(u.bytes,bytes,sizeof(int));
 		return u.in;
 }
 
