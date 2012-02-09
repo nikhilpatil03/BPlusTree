@@ -364,7 +364,8 @@ public:
 			printf("BPlus Tree empty.");
 			return 1;
 		}
-		TreeNode * current = root;
+		TreeNode * current = new TreeNode();
+		loadNode(current,rootAddress);
 		char *nodekey;
 		nodekey = (char *)malloc(keylen(&keytype));
 		int i, isLesser;
@@ -372,7 +373,7 @@ public:
 			for (i = 0 ; i<current->numkeys ; i++ ) {
 				current->getKey(keytype,nodekey,i);
 				isLesser = compare(nodekey,key);
-				if ( isLesser != -1) {
+				if ( isLesser == 1 || (isLesser ==0 && current->flag =='c') ){
 					break;
 				}
 			}
@@ -382,7 +383,7 @@ public:
 					return 1;
 
 				//key found, copy payload
-				utils->copyBytes(payload,&(current->data[DATA_SIZE-(i+1)*payloadlen]),payloadlen);
+				strncpy(payload,&(current->data[DATA_SIZE-(i+1)*payloadlen]),payloadlen);
 				return 0;
 			}
 			else
@@ -396,24 +397,29 @@ int main(){
 	KeyType keyType;
 	keyType.numAttrs=1;
 	keyType.attrTypes[0]=stringType;
-	keyType.attrLen[0]=26;
+	keyType.attrLen[0]=8;
 	char *filename = "/home/sandeep/work/cs631/BPlusTree/index.ind";
-//	class Index *index = new Index(filename,&keyType,8);
+//	class Index *index = new Index(filename,&keyType,26);
 	class Index *index = new Index(filename);
-//	index->insert("2","2");
-//	index->insert("3","3");
-//	index->insert("1","1");
-//	index->insert("5","5");
-//	index->insert("33","33");
-//	index->insert("23","23");
+//	index->insert("2","sandeep");
+//	index->insert("3","nikhil");
+//	index->insert("1","hhh");
+//	index->insert("5","ankur");
+//	index->insert("33","swapnil");
+//	index->insert("23","meme");
 //	delete(index);
 //	index->insert("7","7");
 //	index->insert("9","9");
-	index->insert("4","4");
-	index->insert("45","45");
-	index->insert("46","46");
-
-//	index->insert("","2");
+//	index->insert("4","4");
+//	index->insert("45","45");
+//	index->insert("46","46");
+	char answer[60];
+	index->lookup("4",answer);
+	printf("Found!! %s",answer);
+	index->lookup("46",answer);
+	printf("Found!! %s",answer);
+	index->lookup("45",answer);
+		printf("Found!! %s",answer);
 
 	return 0;
 }
