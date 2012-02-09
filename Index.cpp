@@ -46,9 +46,9 @@ public:
 		for (int i=0; i < keytype.numAttrs; i++){
 			switch(keytype.attrTypes[i]) {
 			case intType:
-				if ( (int)(*key) > (int)(*nodeKey) )
+				if ( utils->getIntForBytes(key) > utils->getIntForBytes(nodeKey) )
 					return 1;
-				else if ( (int)(*key) < (int)(*nodeKey) )
+				else if ( utils->getIntForBytes(key) < utils->getIntForBytes(nodeKey) )
 					return -1;
 				break;
 
@@ -77,24 +77,24 @@ public:
 		keytype = utils->getKeyTypeForBytes(&header[NODE_OFFSET_SIZE+sizeof(payloadlen)]);
 	}
 	int storeNode(TreeNode *node, long long int offset){
-			if(offset == -1)
-			{
-				offset = fHandler->getSize();
+		if(offset == -1)
+		{
+			offset = fHandler->getSize();
 
-			}
-			utils->copyBytes(node->myaddr,utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
-			char *block = (char *)malloc(BLOCK_SIZE);
-			int position = 0;
-			utils->copyBytes(&block[position],utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
-			position += NODE_OFFSET_SIZE;
-			block[position]=node->flag;
-			position += 1;
-			utils->copyBytes(&block[position],utils->getBytesForInt(node->numkeys),sizeof(node->numkeys));
-			position += sizeof(node->numkeys);
-			utils->copyBytes(&block[position],(node->data),sizeof(node->data));
-			fHandler->writeBlock(offset,block);
-			free(block);
-			return 0;
+		}
+		utils->copyBytes(node->myaddr,utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
+		char *block = (char *)malloc(BLOCK_SIZE);
+		int position = 0;
+		utils->copyBytes(&block[position],utils->getBytesForInt(offset),NODE_OFFSET_SIZE);
+		position += NODE_OFFSET_SIZE;
+		block[position]=node->flag;
+		position += 1;
+		utils->copyBytes(&block[position],utils->getBytesForInt(node->numkeys),sizeof(node->numkeys));
+		position += sizeof(node->numkeys);
+		utils->copyBytes(&block[position],(node->data),sizeof(node->data));
+		fHandler->writeBlock(offset,block);
+		free(block);
+		return 0;
 		}
 
 	int loadNode(TreeNode *here,char *offset){
@@ -131,7 +131,12 @@ public:
 			{
 				current->getKey(keytype,nodekey,i);
 				int isLesser = compare(nodekey,key);
-				if ( isLesser != -1)
+				if(isLesser == 0 && current->flag == 'c')
+				{
+					printf("Already Exists!!");
+					return 1;
+				}
+				if ( isLesser >= 0)
 				{
 					break;
 				}
@@ -183,10 +188,10 @@ public:
 		{
 			TreeNode *newLeaf = new TreeNode();
 			int tempSpaceSize = DATA_SIZE+payloadlen+keylen(&keytype);
-//			char *tempSpace = (char*)calloc(tempSpaceSize,sizeof(char));
-			char tempSpace[130];
-			for(int i = 0 ; i < 130 ; i++)
-				tempSpace[i] = '\0';
+			char *tempSpace = (char*)calloc(tempSpaceSize,sizeof(char));
+//			char tempSpace[130];
+//			for(int i = 0 ; i < 130 ; i++)
+//				tempSpace[i] = '\0';
 			utils->copyBytes(tempSpace,node->data,(node->numkeys)*keylen(&keytype));
 			utils->copyBytes(&tempSpace[tempSpaceSize-(node->numkeys)*payloadlen],&(node->data[DATA_SIZE-(node->numkeys)*payloadlen]),(node->numkeys)*payloadlen);
 			for(int j = node->numkeys-1; j >= (position); j--) {
@@ -215,8 +220,10 @@ public:
 			node->numkeys = n_by_two;
 			TreeNode* parent = new TreeNode();
 			for(int i = 0 ; i < height ; i++)
-				if(strncmp(accessPath[i],(node->myaddr),NODE_OFFSET_SIZE) == 0)
-					loadNode(parent,accessPath[i-1]);
+				if(strncmp(accessPath[i],(node->myaddr),NODE_OFFSET_SIZE) == 0){
+					if( i != 0)
+						loadNode(parent,accessPath[i-1]);
+				}
 			char* nextKey =(char *) malloc(keylen(&keytype));
 			newLeaf->getKey(keytype,nextKey,0);
 			storeNode(node,utils->getIntForBytes(node->myaddr));
@@ -283,9 +290,10 @@ public:
 			if(parent->flag != 'c')
 				numPointers++;
 			int tempSpaceSize = DATA_SIZE+payloadlen+keylen(&keytype);
-			char tempSpace[130];
-			for ( int k = 0 ; k < 130; k ++)
-				tempSpace[k] = '\0';
+			char *tempSpace =(char *)calloc(tempSpaceSize,sizeof(char));
+//			char tempSpace[130];
+//			for ( int k = 0 ; k < 130; k ++)
+//				tempSpace[k] = '\0';
 			utils->copyBytes(tempSpace,parent->data,(parent->numkeys)*keylen(&keytype));
 //			if(parent->flag != 'c')
 //				utils->copyBytes(&tempSpace[tempSpaceSize-(parent->numkeys+1)*NODE_OFFSET_SIZE],&(parent->data[DATA_SIZE-(parent->numkeys+1)*NODE_OFFSET_SIZE]),(parent->numkeys+1)*NODE_OFFSET_SIZE);
@@ -328,7 +336,8 @@ public:
 			TreeNode* grandParent = new TreeNode();
 			for(int i = 0 ; i < height ; i++)
 				if(strncmp(accessPath[i],(parent->myaddr),NODE_OFFSET_SIZE) == 0)
-					loadNode(grandParent,accessPath[i-1]);
+					if (i != 0)
+						loadNode(grandParent,accessPath[i-1]);
 			char* nextKey =(char *) malloc(keylen(&keytype));
 			utils->copyBytes(nextKey,&(tempSpace[(n_by_two*keylen(&keytype))]),keylen(&keytype));
 //			newNonLeaf->getKey(keytype,nextKey,0);
@@ -396,14 +405,42 @@ public:
 int main(){
 	KeyType keyType;
 	keyType.numAttrs=1;
-	keyType.attrTypes[0]=stringType;
+	keyType.attrTypes[0]=intType;
 	keyType.attrLen[0]=8;
-	char *filename = "/home/sandeep/work/cs631/BPlusTree/index.ind";
-//	class Index *index = new Index(filename,&keyType,26);
-	class Index *index = new Index(filename);
-//	index->insert("2","sandeep");
-//	index->insert("3","nikhil");
-//	index->insert("1","hhh");
+	char *filename = "/home/sandeep/work/cs631/BPlusTree/indexComp.ind";
+	srand(1);
+	class Index *index = new Index(filename,&keyType,20);
+	char *keyN = (char *)calloc(8,1);
+	char payL[20];
+	int a;
+	Utils *utils  = new Utils();
+	for( int i = 0 ; i < 200 ; i++)
+	{
+//		sprintf(keyN,"%d",rand()%20);
+		a = rand()%20;
+
+//		char *str = utils->getBytesForInt(rand()%20);
+		printf("\n %d",a);
+		utils->copyBytes(keyN,utils->getBytesForInt(a),8);
+//		printf("str = %s and %s",str,keyN);
+		strcpy(payL,keyN);
+		strcat(payL,"-ptr");
+		index->insert(keyN,payL);
+	}
+	delete(index);
+//	int a;
+//	int found;
+//	srand(1);
+//	class Index *index = new Index(filename);
+//	for ( int i = 0 ; i < 4 ; i++){
+//		utils->copyBytes(keyN,utils->getBytesForInt(rand()%20),8);
+//		found = index->lookup(keyN,payL);
+//		printf("\n %d ==== %d",i,found);
+//	}
+//
+//	index->insert("3","3-ptr");
+//	index->insert("6","6-ptr");
+//	index->insert("17","17-ptr");
 //	index->insert("5","ankur");
 //	index->insert("33","swapnil");
 //	index->insert("23","meme");
@@ -413,13 +450,14 @@ int main(){
 //	index->insert("4","4");
 //	index->insert("45","45");
 //	index->insert("46","46");
-	char answer[60];
-	index->lookup("4",answer);
-	printf("Found!! %s",answer);
-	index->lookup("46",answer);
-	printf("Found!! %s",answer);
-	index->lookup("45",answer);
-		printf("Found!! %s",answer);
+
+//	char answer[60];
+//	index->lookup("2",answer);
+//	printf("Found!! %s",answer);
+//	index->lookup("33",answer);
+//	printf("Found!! %s",answer);
+//	index->lookup("45",answer);
+//	printf("Found!! %s",answer);
 
 	return 0;
 }
